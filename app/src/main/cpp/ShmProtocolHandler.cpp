@@ -2,7 +2,7 @@
 // Created by Tom on 2026/3/12.
 //
 
-#include <stdint.h>
+
 #include "ShmProtocolHandler.h"
 
 uint32_t ShmProtocolHandler::parsePayloadLength(uint8_t header[SHM_SERVER_PROTOCOL_HEAD_SIZE   ]) {
@@ -140,3 +140,42 @@ bool ShmProtocolHandler::receiveProtocolPayload(int fd, char* buf, size_t len)
 
     return true;
 }
+
+void ShmProtocolHandler::exchangeMetaData(const ShmIpcMessage &message) {
+    LOGI("handler exchangeMetaData");
+}
+
+
+
+void ShmProtocolHandler::shareMemoryByMemfd(const ShmIpcMessage &message) {
+    LOGI("handler shareMemoryByMemfd");
+    if (message.fds.empty()) {
+        LOGE("No fd received");
+        return;
+    }
+
+    int shm_fd = message.fds[0]; // client 传来的 memfd
+
+    // 1. 检查 fd
+    if (shm_fd < 0) {
+        LOGE("Invalid fd");
+        return;
+    }
+
+    // 2. 获取大小 (fstat 或 ashmem ioctl)
+    struct stat st;
+    if (fstat(shm_fd, &st) < 0) {
+        LOGE("fstat failed");
+        return;
+    }
+    size_t size = st.st_size;
+
+    void* addr = mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
+    if (addr == MAP_FAILED) {
+        LOGE("mmap failed");
+        return;
+    }
+
+    LOGI("Server mapped memfd at %p, size=%zu", addr, size);
+}
+

@@ -8,10 +8,15 @@
 #include <vector>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <sys/epoll.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <stdint.h>
+
 
 #include "ShmLogger.h"
 #include "ShmServerConfig.h"
-
+#include "ShmIpcMessage.h"
 
 
 enum class ShmProtocolType : uint8_t {
@@ -33,6 +38,9 @@ public:
     uint32_t parsePayloadLength(uint8_t header[SHM_SERVER_PROTOCOL_HEAD_SIZE]);
 
     void handleShmIpcProtocol(char type, std::vector<char> payload);
+
+    void exchangeMetaData(const ShmIpcMessage&  message);
+    void shareMemoryByMemfd(const ShmIpcMessage&  message);
 
     //handle client send shm file description
     void handleShareMemoryByMemfd();

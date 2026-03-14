@@ -8,6 +8,7 @@
 
 void ShmClientSession::startRunReadThreadLoop() {
     mShmReadThreadRunning = true;
+    mShmProgressThread.reset(new std::thread(&ShmClientSession::messageProcessor, this));
     mShmReadThread.reset(new std::thread(&ShmClientSession::clientUdsReader, this));
 }
 
@@ -15,6 +16,10 @@ void ShmClientSession::stopRunReadThreadLoop() {
     mShmReadThreadRunning = false;
     if (mShmReadThread && mShmReadThread->joinable()) {
         mShmReadThread->join();
+    }
+    mMessageQueue.stop();
+    if (mShmProgressThread && mShmProgressThread->joinable()) {
+        mShmProgressThread->join();
     }
 }
 
@@ -41,7 +46,7 @@ void ShmClientSession::clientUdsReader() {
             }
             msg.payload = std::move(payload);
             msg.fds = std::move(received_fds);
-
+            mMessageQueue.push(std::move(msg));
         } else if (ret == 0) {
             LOGE("unix domain socket header read failure");
             break;
@@ -55,5 +60,40 @@ void ShmClientSession::clientUdsReader() {
     }
     close(mClientFd);
 
+    mShmReadThreadRunning = false;
+
+    mMessageQueue.stop();
+    if (mShmProgressThread && mShmProgressThread->joinable()) {
+        mShmProgressThread->join();
+    }
+
     LOGI("ShmClient Session Thread Stop");
+}
+
+void ShmClientSession::messageProcessor() {
+    LOGI("Message Processor Thread Start");
+
+    ShmIpcMessage msg;
+    while (mMessageQueue.pop(msg)) {
+        LOGI("Processing message, payload size: %zu, fds count: %zu",
+             msg.payload.size(), msg.fds.size());
+        auto messageType = static_cast<ShmProtocolType>(msg.header.type);
+        switch (messageType) {
+
+            case ShmProtocolType::ExchangeMetadata: {
+                mShmProtocolHandler->exchangeMetaData(msg);
+                break;
+            }
+
+            case ShmProtocolType::ShareMemoryByMemfd: {
+                mShmProtocolHandler->shareMemoryByMemfd(msg);
+                break;
+            }
+
+            default:
+                break;
+        }
+    }
+
+    LOGI("Message Processor Thread Stop");
 }

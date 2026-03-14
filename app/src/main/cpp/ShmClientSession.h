@@ -9,8 +9,10 @@
 #include <atomic>
 #include <map>
 #include <mutex>
+#include <sys/epoll.h>
 
 #include "ShmProtocolHandler.h"
+#include "ShmMessageQueue.h"
 
 
 class ShmClientSession {
@@ -28,10 +30,14 @@ public:
         stopRunReadThreadLoop();
     }
 private:
+    ShmMessageQueue mMessageQueue;
+
     std::atomic<bool> mShmReadThreadRunning{};
     std::unique_ptr<std::thread> mShmReadThread;
+    std::unique_ptr<std::thread> mShmProgressThread;
     std::unique_ptr<ShmProtocolHandler> mShmProtocolHandler;
     void clientUdsReader();
+    void messageProcessor();
 };
 
 #endif //SHMIPCC_SHMCLIENTSESSION_H
