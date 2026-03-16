@@ -67,6 +67,8 @@ struct ShmBufferManager {
 };
 
 
+uint32_t alloc_slice(ShmBufferList* list);
+void free_slice(ShmBufferList* list, uint32_t index);
 ShmBufferManager* init_buffer_manager(size_t shm_size);
 
 #endif //SHMIPCC_SHMBUFFERMANAGER_H
