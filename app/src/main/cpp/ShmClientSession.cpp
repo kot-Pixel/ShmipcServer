@@ -97,3 +97,18 @@ void ShmClientSession::messageProcessor() {
 
     LOGI("Message Processor Thread Stop");
 }
+
+void ShmClientSession::onSharedMemoryReady(void *addr, size_t size, int fd, ShmBufferManager *manager) {
+    mSharedMemoryAddr = addr;
+    mSharedMemorySize = size;
+    mSharedMemoryFd = fd;
+    mBufferManager = manager;
+
+    LOGI("ShmClientSession received shared memory: addr=%p, size=%zu", addr, size);
+}
+
+void ShmClientSession::writData(const uint8_t *msg, uint32_t len) {
+    if (mBufferManager != nullptr) {
+
+    }
+}

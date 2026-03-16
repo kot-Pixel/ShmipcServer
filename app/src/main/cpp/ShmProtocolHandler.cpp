@@ -4,6 +4,8 @@
 
 
 #include "ShmProtocolHandler.h"
+#include "ShmBufferManager.h"
+#include "ShmClientSession.h"
 
 uint32_t ShmProtocolHandler::parsePayloadLength(uint8_t header[SHM_SERVER_PROTOCOL_HEAD_SIZE   ]) {
     uint32_t totalLength = 0;
@@ -154,16 +156,14 @@ void ShmProtocolHandler::shareMemoryByMemfd(const ShmIpcMessage &message) {
         return;
     }
 
-    int shm_fd = message.fds[0]; // client 传来的 memfd
+    int shm_fd = message.fds[0];
 
-    // 1. 检查 fd
     if (shm_fd < 0) {
         LOGE("Invalid fd");
         return;
     }
 
-    // 2. 获取大小 (fstat 或 ashmem ioctl)
-    struct stat st;
+    struct stat st{};
     if (fstat(shm_fd, &st) < 0) {
         LOGE("fstat failed");
         return;
@@ -172,10 +172,16 @@ void ShmProtocolHandler::shareMemoryByMemfd(const ShmIpcMessage &message) {
 
     void* addr = mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
     if (addr == MAP_FAILED) {
-        LOGE("mmap failed");
+        LOGE("memory map failed");
         return;
     }
 
-    LOGI("Server mapped memfd at %p, size=%zu", addr, size);
+    ShmBufferManager *mBufferManager = init_buffer_manager(size);
+    if (shmSessionCtx) {
+        auto* session = static_cast<ShmClientSession*>(shmSessionCtx);
+        session->onSharedMemoryReady(addr, size, shm_fd, mBufferManager);
+    }
+
+    LOGI("Server mapped memory fd at %p, size=%zu", addr, size);
 }
 

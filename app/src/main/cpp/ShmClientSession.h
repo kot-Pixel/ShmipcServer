@@ -1,7 +1,3 @@
-//
-// Created by Tom on 2026/3/12.
-//
-
 #ifndef SHMIPCC_SHMCLIENTSESSION_H
 #define SHMIPCC_SHMCLIENTSESSION_H
 
@@ -13,6 +9,7 @@
 
 #include "ShmProtocolHandler.h"
 #include "ShmMessageQueue.h"
+#include "ShmBufferManager.h"
 
 
 class ShmClientSession {
@@ -22,13 +19,19 @@ public:
     void startRunReadThreadLoop();
     void stopRunReadThreadLoop();
 
+    //
+    void writData(const uint8_t* msg, uint32_t len);
+
     ShmClientSession() {
-        mShmProtocolHandler = std::unique_ptr<ShmProtocolHandler>(new ShmProtocolHandler());
+        mShmProtocolHandler = std::unique_ptr<ShmProtocolHandler>(new ShmProtocolHandler(this));
     }
 
     ~ShmClientSession() {
         stopRunReadThreadLoop();
     }
+
+    void onSharedMemoryReady(void* addr, size_t size, int fd, ShmBufferManager* manager);
+
 private:
     ShmMessageQueue mMessageQueue;
 
@@ -36,6 +39,14 @@ private:
     std::unique_ptr<std::thread> mShmReadThread;
     std::unique_ptr<std::thread> mShmProgressThread;
     std::unique_ptr<ShmProtocolHandler> mShmProtocolHandler;
+
+
+    void* mSharedMemoryAddr = nullptr;
+    size_t mSharedMemorySize = 0;
+    int mSharedMemoryFd = -1;
+    ShmBufferManager* mBufferManager = nullptr;
+
+
     void clientUdsReader();
     void messageProcessor();
 };

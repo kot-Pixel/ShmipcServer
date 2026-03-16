@@ -31,6 +31,9 @@ enum class ShmProtocolType : uint8_t {
 
 class ShmProtocolHandler {
 
+private:
+    void* shmSessionCtx = nullptr;
+
 public:
     bool receiveProtocolHeader(int fd, uint8_t* header, std::vector<int>& received_fds);
     bool receiveProtocolPayload(int fd, char* buf, size_t len);
@@ -44,6 +47,14 @@ public:
 
     //handle client send shm file description
     void handleShareMemoryByMemfd();
+
+    explicit ShmProtocolHandler(void* extShmSessionCtx) {
+        shmSessionCtx = extShmSessionCtx;
+    }
+
+    ~ShmProtocolHandler() {
+        shmSessionCtx = nullptr;
+    }
 };
 
 
