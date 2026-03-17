@@ -106,14 +106,23 @@ void ShmClientSession::onSharedMemoryReady(void *addr, size_t size, int fd, ShmB
 
     LOGI("ShmClientSession received shared memory: addr=%p, size=%zu", addr, size);
 
-// 准备数据
-    const char data[] = "hello shm!";
-    writData(reinterpret_cast<const uint8_t*>(data), sizeof(data));
+//// 准备数据
+//    const char data[] = "hello shm!";
+//    writData(reinterpret_cast<const uint8_t*>(data), sizeof(data));
+
+// 访问第一个 slice
+    if (mBufferManager->buffer_list.slice_count > 0) {
+        ShmBufferSlice* first_slice = mBufferManager->buffer_list.slices;
+        first_slice->length = 16;
+        first_slice->data[0] = 0xAA;
+    }
 
 }
 
 void ShmClientSession::writData(const uint8_t *msg, uint32_t len) {
     if (!mBufferManager || !msg || len == 0) return;
+
+    LOGD("writData len is : %d", len);
 
     auto* mgr = mBufferManager;
     auto* list = &mgr->buffer_list;
@@ -133,7 +142,7 @@ void ShmClientSession::writData(const uint8_t *msg, uint32_t len) {
                 free_slice(list, back);
                 back = next;
             }
-            std::cerr << "No free slice available!" << std::endl;
+            LOGE("No free slice available!");
             return;
         }
 
@@ -156,7 +165,7 @@ void ShmClientSession::writData(const uint8_t *msg, uint32_t len) {
     uint32_t next_tail = (tail + 1) % queue->capacity;
     if (next_tail == queue->head.load(std::memory_order_acquire)) {
 
-        std::cerr << "EventQueue is full!" << std::endl;
+        LOGE("EventQueue is full!");
         uint32_t back = first_slice;
         while (back != INVALID_INDEX) {
             uint32_t next = list->slices[back].next;

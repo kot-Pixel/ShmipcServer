@@ -86,37 +86,28 @@ bool read_message(ShmBufferManager* mgr, std::vector<uint8_t>& out) {
     return true;
 }
 
-ShmBufferManager* init_buffer_manager(size_t shm_size) {
-
-    LOGD("all map memory size is : %d Bytes", shm_size);
-
-    auto* mgr = new ShmBufferManager();
+ShmBufferManager* init_shm_buffer_manager(void* addr, size_t total_size) {
+    if (!addr || total_size < sizeof(ShmBufferManager)) return nullptr;
+    memset(addr, 0, total_size);
+    auto* mgr = (ShmBufferManager*)addr;
 
     mgr->io_queue.head.store(0);
     mgr->io_queue.tail.store(0);
     mgr->io_queue.capacity = EVENT_QUEUE_SIZE;
 
-    LOGD("io message queue size is: %d Bytes", sizeof(ShmBufferEventQueue));
-    LOGD("shm buffer slice size is: %d Bytes", sizeof(ShmBufferSlice));
-
-    size_t slice_space = shm_size - sizeof(ShmBufferEventQueue);
-    auto slice_count = static_cast<uint32_t>(slice_space / sizeof(ShmBufferSlice));
-
-    LOGD("all slice count is : %d", slice_count);
-
-    if (slice_count == 0) return nullptr;
+    size_t header_size = sizeof(ShmBufferManager);
+    size_t slice_header_size = sizeof(uint32_t) + sizeof(uint32_t);
+    size_t available_bytes = total_size - header_size;
+    auto slice_count = static_cast<uint32_t>(available_bytes / (sizeof(ShmBufferSlice)));
 
     mgr->buffer_list.slice_count = slice_count;
-    mgr->buffer_list.slices = new ShmBufferSlice[slice_count];
-
-    for (uint32_t i = 0; i < slice_count - 1; ++i) {
-        mgr->buffer_list.slices[i].next = i + 1;
-        mgr->buffer_list.slices[i].length = 0;
-    }
-    mgr->buffer_list.slices[slice_count - 1].next = INVALID_INDEX;
-    mgr->buffer_list.slices[slice_count - 1].length = 0;
-
     mgr->buffer_list.free_head.store(0);
+
+    ShmBufferSlice* slice_ptr = mgr->buffer_list.slices;
+    for (uint32_t i = 0; i < slice_count; ++i) {
+        slice_ptr[i].next = (i + 1 < slice_count) ? i + 1 : INVALID_INDEX;
+        slice_ptr[i].length = 0;
+    }
 
     return mgr;
 }

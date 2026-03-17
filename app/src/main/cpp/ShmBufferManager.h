@@ -36,6 +36,8 @@ struct ShmBufferEvent {
  * ShmBufferEventQueue 8个字节 * EVENT_QUEUE_SIZE
  *
  * 80 + 4 + 4 + 4 = 92
+ *
+ * 92 --> 96 for bytes align
  */
 struct ShmBufferEventQueue {
     std::atomic<uint32_t> head; // 4 个字节
@@ -58,7 +60,7 @@ struct ShmBufferSlice {
 struct ShmBufferList {
     uint32_t slice_count;
     std::atomic<uint32_t> free_head;
-    ShmBufferSlice* slices;
+    ShmBufferSlice slices[];
 };
 
 struct ShmBufferManager {
@@ -69,6 +71,6 @@ struct ShmBufferManager {
 
 uint32_t alloc_slice(ShmBufferList* list);
 void free_slice(ShmBufferList* list, uint32_t index);
-ShmBufferManager* init_buffer_manager(size_t shm_size);
+ShmBufferManager* init_shm_buffer_manager(void* addr, size_t total_size);
 
 #endif //SHMIPCC_SHMBUFFERMANAGER_H

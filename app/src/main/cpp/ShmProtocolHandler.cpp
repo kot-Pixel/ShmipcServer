@@ -176,10 +176,17 @@ void ShmProtocolHandler::shareMemoryByMemfd(const ShmIpcMessage &message) {
         return;
     }
 
-    ShmBufferManager *mBufferManager = init_buffer_manager(size);
+    ShmBufferManager* mgr = init_shm_buffer_manager(addr, size);
+
+    LOGD("ShmBufferManager: io_queue capacity=%u, slice_count=%u\n",
+           mgr->io_queue.capacity,
+           mgr->buffer_list.slice_count);
+
+    LOGD("ShmBufferSlice size %d", sizeof(ShmBufferSlice));
+
     if (shmSessionCtx) {
         auto* session = static_cast<ShmClientSession*>(shmSessionCtx);
-        session->onSharedMemoryReady(addr, size, shm_fd, mBufferManager);
+        session->onSharedMemoryReady(addr, size, shm_fd, mgr);
     }
 
     LOGI("Server mapped memory fd at %p, size=%zu", addr, size);
