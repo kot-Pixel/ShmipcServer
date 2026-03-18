@@ -192,3 +192,50 @@ void ShmProtocolHandler::shareMemoryByMemfd(const ShmIpcMessage &message) {
     LOGI("Server mapped memory fd at %p, size=%zu", addr, size);
 }
 
+int ShmProtocolHandler::sendShmMessage(int socketFd, const ShmIpcMessage &message) {
+    struct msghdr msg{};
+    struct iovec iov[2];
+
+    auto headerBytes = message.header.serialize();
+
+    iov[0].iov_base = (void*)headerBytes.data();
+    iov[0].iov_len  = headerBytes.size();
+
+    iov[1].iov_base = (void*)message.payload.data();
+    iov[1].iov_len  = message.payload.size();
+
+    msg.msg_iov = iov;
+    msg.msg_iovlen = message.payload.empty() ? 1 : 2;
+
+    char cmsgbuf[CMSG_SPACE(sizeof(int) * message.fds.size())];
+
+    if (!message.fds.empty())
+    {
+
+        LOGD("send fds start");
+
+        msg.msg_control = cmsgbuf;
+        msg.msg_controllen = CMSG_SPACE(sizeof(int) * message.fds.size());
+
+        struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);
+        cmsg->cmsg_level = SOL_SOCKET;
+        cmsg->cmsg_type  = SCM_RIGHTS;
+        cmsg->cmsg_len   = CMSG_LEN(sizeof(int) * message.fds.size());
+
+        memcpy(CMSG_DATA(cmsg), message.fds.data(),
+               sizeof(int) * message.fds.size());
+
+        LOGD("send fds end");
+    }
+
+    ssize_t n = sendmsg(socketFd, &msg, 0);
+
+    if (n < 0)
+    {
+        perror("sendmsg");
+        return -1;
+    }
+
+    return 0;
+}
+

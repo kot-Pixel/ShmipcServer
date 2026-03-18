@@ -55,6 +55,9 @@ public:
     ~ShmProtocolHandler() {
         shmSessionCtx = nullptr;
     }
+
+
+    int sendShmMessage(int socketFd, const ShmIpcMessage& message);
 };
 
 

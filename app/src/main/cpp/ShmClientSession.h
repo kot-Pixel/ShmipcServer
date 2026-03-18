@@ -15,12 +15,14 @@
 class ShmClientSession {
 
 public:
-    int mClientFd{};
+    int mClientFd = -1;
     void startRunReadThreadLoop();
     void stopRunReadThreadLoop();
 
-    //
+    // write data to remote
     void writData(const uint8_t* msg, uint32_t len);
+
+    void dataSync();
 
     ShmClientSession() {
         mShmProtocolHandler = std::unique_ptr<ShmProtocolHandler>(new ShmProtocolHandler(this));

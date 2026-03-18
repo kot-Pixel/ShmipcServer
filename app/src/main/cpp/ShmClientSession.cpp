@@ -173,4 +173,15 @@ void ShmClientSession::writData(const uint8_t* msg, uint32_t len) {
     queue->events[tail].length = len;
 
     queue->tail.store(next_tail, std::memory_order_release);
+
+    dataSync();
+}
+
+void ShmClientSession::dataSync() {
+    if (mClientFd != -1) {
+        ShmIpcMessage dataSyncMsg;
+        auto type_byte = static_cast<uint8_t>(ShmProtocolType::SyncEvent);
+        dataSyncMsg.header = ShmIpcMessageHeader(type_byte, SHM_SERVER_PROTOCOL_HEAD_SIZE , 0);
+        mShmProtocolHandler->sendShmMessage(mClientFd, dataSyncMsg);
+    }
 }
