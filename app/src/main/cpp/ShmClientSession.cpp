@@ -106,76 +106,71 @@ void ShmClientSession::onSharedMemoryReady(void *addr, size_t size, int fd, ShmB
 
     LOGI("ShmClientSession received shared memory: addr=%p, size=%zu", addr, size);
 
-//// 准备数据
-//    const char data[] = "hello shm!";
-//    writData(reinterpret_cast<const uint8_t*>(data), sizeof(data));
-
-// 访问第一个 slice
-    if (mBufferManager->buffer_list.slice_count > 0) {
-        ShmBufferSlice* first_slice = mBufferManager->buffer_list.slices;
-        first_slice->length = 16;
-        first_slice->data[0] = 0xAA;
-    }
-
+    const char data[] = "hello shm!";
+    writData(reinterpret_cast<const uint8_t*>(data), sizeof(data));
 }
 
-void ShmClientSession::writData(const uint8_t *msg, uint32_t len) {
+void ShmClientSession::writData(const uint8_t* msg, uint32_t len) {
     if (!mBufferManager || !msg || len == 0) return;
-
-    LOGD("writData len is : %d", len);
 
     auto* mgr = mBufferManager;
     auto* list = &mgr->buffer_list;
     auto* queue = &mgr->io_queue;
 
-    uint32_t slices_needed = (len + SLICE_SIZE - 1) / SLICE_SIZE;
-    uint32_t first_slice = INVALID_INDEX;
-    uint32_t prev_slice = INVALID_INDEX;
+    uint32_t slice_size = SLICE_SIZE;
+    uint32_t slices_needed = (len + slice_size - 1) / slice_size;
+
+    uint32_t first = INVALID_INDEX;
+    uint32_t prev = INVALID_INDEX;
     uint32_t offset = 0;
 
     for (uint32_t i = 0; i < slices_needed; ++i) {
         uint32_t idx = alloc_slice(list);
         if (idx == INVALID_INDEX) {
-            uint32_t back = first_slice;
-            while (back != INVALID_INDEX) {
-                uint32_t next = list->slices[back].next;
-                free_slice(list, back);
-                back = next;
+            LOGE("No free slice!");
+            uint32_t cur = first;
+            while (cur != INVALID_INDEX) {
+                uint32_t next = list->slices[cur].next;
+                free_slice(list, cur);
+                cur = next;
             }
-            LOGE("No free slice available!");
             return;
         }
 
-        auto& slice = list->slices[idx];
-        uint32_t copy_len = std::min(len - offset, static_cast<uint32_t>(SLICE_SIZE));
-        memcpy(slice.data, msg + offset, copy_len);
-        slice.length = copy_len;
+        auto& s = list->slices[idx];
+
+        uint32_t copy_len = std::min(len - offset, slice_size);
+        memcpy(s.data, msg + offset, copy_len);
+        s.length = copy_len;
+
         offset += copy_len;
 
-        if (prev_slice != INVALID_INDEX)
-            list->slices[prev_slice].next = idx;
+        if (prev != INVALID_INDEX)
+            list->slices[prev].next = idx;
         else
-            first_slice = idx;
+            first = idx;
 
-        prev_slice = idx;
-        slice.next = INVALID_INDEX;
+        prev = idx;
+        s.next = INVALID_INDEX;
     }
 
     uint32_t tail = queue->tail.load(std::memory_order_acquire);
     uint32_t next_tail = (tail + 1) % queue->capacity;
-    if (next_tail == queue->head.load(std::memory_order_acquire)) {
 
-        LOGE("EventQueue is full!");
-        uint32_t back = first_slice;
-        while (back != INVALID_INDEX) {
-            uint32_t next = list->slices[back].next;
-            free_slice(list, back);
-            back = next;
+    if (next_tail == queue->head.load(std::memory_order_acquire)) {
+        LOGE("Queue full!");
+
+        uint32_t cur = first;
+        while (cur != INVALID_INDEX) {
+            uint32_t next = list->slices[cur].next;
+            free_slice(list, cur);
+            cur = next;
         }
         return;
     }
 
-    queue->events[tail].slice_index = first_slice;
+    queue->events[tail].slice_index = first;
     queue->events[tail].length = len;
+
     queue->tail.store(next_tail, std::memory_order_release);
 }
