@@ -1,11 +1,6 @@
-//
-// Created by Tom on 2026/3/12.
-//
-
-
 #include "ShmProtocolHandler.h"
 #include "ShmBufferManager.h"
-#include "ShmClientSession.h"
+#include "ShmServerSession.h"
 
 uint32_t ShmProtocolHandler::parsePayloadLength(uint8_t header[SHM_SERVER_PROTOCOL_HEAD_SIZE   ]) {
     uint32_t totalLength = 0;
@@ -185,7 +180,7 @@ void ShmProtocolHandler::shareMemoryByMemfd(const ShmIpcMessage &message) {
     LOGD("ShmBufferSlice size %d", sizeof(ShmBufferSlice));
 
     if (shmSessionCtx) {
-        auto* session = static_cast<ShmClientSession*>(shmSessionCtx);
+        auto* session = static_cast<ShmServerSession*>(shmSessionCtx);
         session->onSharedMemoryReady(addr, size, shm_fd, mgr);
     }
 

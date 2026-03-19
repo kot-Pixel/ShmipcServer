@@ -8,19 +8,19 @@
 
 #include <stdio.h>
 #include <string.h>
-#include "ShmClientManager.h"
+#include "ShmServerSessionManager.h"
 #include "ShmLogger.h"
 #include "ShmServerConfig.h"
 
 class ShmServer {
     int server_fd = -1;
     struct sockaddr_un addr;
-    std::unique_ptr<ShmClientManager> mShmClientManager;
+    std::unique_ptr<ShmServerSessionManager> mShmClientManager;
 
     void createShmClientSession();
 public:
     ShmServer() : server_fd(-1), addr{},
-                  mShmClientManager(std::unique_ptr<ShmClientManager>(new ShmClientManager())) {
+                  mShmClientManager(std::unique_ptr<ShmServerSessionManager>(new ShmServerSessionManager())) {
     }
     ~ShmServer() {
         if (server_fd != -1) {

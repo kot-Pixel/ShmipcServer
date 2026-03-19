@@ -29,9 +29,9 @@ add_library(${CMAKE_PROJECT_NAME} SHARED
         # List C/C++ source files with relative paths to this CMakeLists.txt.
         native-lib.cpp
         ShmServer.cpp
-        ShmClientSession.cpp
+        ShmServerSession.cpp
         ShmProtocolHandler.cpp
-        ShmClientManager.cpp
+        ShmServerSessionManager.cpp
         ShmBufferManager.cpp
 )
 
