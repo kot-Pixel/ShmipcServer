@@ -45,6 +45,8 @@ public:
     void exchangeMetaData(const ShmIpcMessage&  message);
     void shareMemoryByMemfd(const ShmIpcMessage&  message);
 
+    void syncEvent(const ShmIpcMessage &message);
+
     //handle client send shm file description
     void handleShareMemoryByMemfd();
 

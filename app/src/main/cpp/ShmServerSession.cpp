@@ -43,9 +43,6 @@ void ShmServerSession::clientUdsReader() {
             msg.payload = std::move(payload);
             msg.fds = std::move(received_fds);
             mMessageQueue.push(std::move(msg));
-        } else if (ret == 0) {
-            LOGE("unix domain socket header read failure");
-            break;
         } else {
             if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR) {
                 continue;
@@ -86,6 +83,10 @@ void ShmServerSession::messageProcessor() {
                 break;
             }
 
+            case ShmProtocolType::SyncEvent: {
+                mShmProtocolHandler->syncEvent(msg);
+            }
+
             default:
                 break;
         }
@@ -100,10 +101,7 @@ void ShmServerSession::onSharedMemoryReady(void *addr, size_t size, int fd, ShmB
     mSharedMemoryFd = fd;
     mBufferManager = manager;
 
-    LOGI("ShmClientSession received shared memory: addr=%p, size=%zu", addr, size);
-
-    const char data[] = "hello shm!";
-    writData(reinterpret_cast<const uint8_t*>(data), sizeof(data));
+    shareMemoryByMemFdAck();
 }
 
 void ShmServerSession::writData(const uint8_t* msg, uint32_t len) {
@@ -177,7 +175,18 @@ void ShmServerSession::dataSync() {
     if (mClientFd != -1) {
         ShmIpcMessage dataSyncMsg;
         auto type_byte = static_cast<uint8_t>(ShmProtocolType::SyncEvent);
-        dataSyncMsg.header = ShmIpcMessageHeader(type_byte, SHM_SERVER_PROTOCOL_HEAD_SIZE , 0);
+        auto length = SHM_SERVER_PROTOCOL_HEAD_SIZE;
+        dataSyncMsg.header = ShmIpcMessageHeader(type_byte, length , 0);
+        mShmProtocolHandler->sendShmMessage(mClientFd, dataSyncMsg);
+    }
+}
+
+void ShmServerSession::shareMemoryByMemFdAck() {
+    if (mClientFd != -1) {
+        ShmIpcMessage dataSyncMsg;
+        auto type_byte = static_cast<uint8_t>(ShmProtocolType::AckShareMemory);
+        auto length = SHM_SERVER_PROTOCOL_HEAD_SIZE;
+        dataSyncMsg.header = ShmIpcMessageHeader(type_byte, length , 0);
         mShmProtocolHandler->sendShmMessage(mClientFd, dataSyncMsg);
     }
 }

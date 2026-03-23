@@ -23,6 +23,7 @@ public:
     void writData(const uint8_t* msg, uint32_t len);
 
     void dataSync();
+    void shareMemoryByMemFdAck();
 
     ShmServerSession() {
         mShmProtocolHandler = std::unique_ptr<ShmProtocolHandler>(new ShmProtocolHandler(this));
