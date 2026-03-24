@@ -33,6 +33,7 @@ add_library(${CMAKE_PROJECT_NAME} SHARED
         ShmProtocolHandler.cpp
         ShmServerSessionManager.cpp
         ShmBufferManager.cpp
+        ShmBenchTester.cpp
 )
 
 # Specifies libraries CMake should link to your target library. You

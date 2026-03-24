@@ -1,6 +1,7 @@
 #include <jni.h>
 #include <string>
 #include "ShmServer.h"
+#include "ShmBenchTester.h"
 
 ShmServer server;
 
@@ -26,8 +27,8 @@ Java_com_kotlinx_shmipcc_MainActivity_benchTestSendData(JNIEnv *env, jobject thi
     std::string test = "hello shmipc";
 
     ShmServerSession* firstServerSession = allServerSession[0];
-    if(firstServerSession != nullptr) {
-        LOGI("write server data size is %d, data str is %s", test.size(), test.data());
-        firstServerSession->writData(reinterpret_cast<const uint8_t*>(test.data()), test.size());
+
+    for (int i = 0; i < 500; ++i) {
+        ShmBenchTester::benchTest(firstServerSession, 1024);
     }
 }

@@ -1,0 +1,38 @@
+//
+// Created by kotlinx on 2026/3/24.
+//
+
+#ifndef SHMIPCC_SHMBENCHTESTER_H
+#define SHMIPCC_SHMBENCHTESTER_H
+
+#include "ShmServerSession.h"
+
+
+class ShmBenchTester {
+
+public:
+    static uint32_t seq;
+
+    static void benchTest(ShmServerSession* serverSession, uint32_t payload_size) {
+        if(serverSession != nullptr) {
+            std::vector<uint8_t> buffer;
+            buffer.resize(sizeof(uint32_t) * 2 + payload_size);
+
+            uint32_t* p = (uint32_t*)buffer.data();
+
+            p[0] = seq++;              // sequence
+            p[1] = payload_size;       // length
+
+            uint8_t* payload = buffer.data() + 8;
+
+            for (uint32_t i = 0; i < payload_size; i++) {
+                payload[i] = (uint8_t)(i % 256);
+            }
+
+            serverSession->writData(buffer.data(), buffer.size());
+        }
+    }
+};
+
+
+#endif //SHMIPCC_SHMBENCHTESTER_H
