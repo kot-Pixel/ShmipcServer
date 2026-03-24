@@ -68,8 +68,8 @@ void ShmServerSession::messageProcessor() {
 
     ShmIpcMessage msg;
     while (mMessageQueue.pop(msg)) {
-        LOGI("Processing message, payload size: %zu, fds count: %zu",
-             msg.payload.size(), msg.fds.size());
+//        LOGI("Processing message, payload size: %zu, fds count: %zu",
+//             msg.payload.size(), msg.fds.size());
         auto messageType = static_cast<ShmProtocolType>(msg.header.type);
         switch (messageType) {
 
@@ -79,6 +79,11 @@ void ShmServerSession::messageProcessor() {
             }
 
             case ShmProtocolType::ShareMemoryByMemfd: {
+                mShmProtocolHandler->handleShareMemoryByMemfd(msg);
+                break;
+            }
+
+            case ShmProtocolType::AckShareMemory: {
                 mShmProtocolHandler->shareMemoryByMemfd(msg);
                 break;
             }
@@ -96,12 +101,14 @@ void ShmServerSession::messageProcessor() {
 }
 
 void ShmServerSession::onSharedMemoryReady(void *addr, size_t size, int fd, ShmBufferManager *manager) {
+    LOGI(">>>>>>>>>> receive AckShareMemory");
     mSharedMemoryAddr = addr;
     mSharedMemorySize = size;
     mSharedMemoryFd = fd;
     mBufferManager = manager;
 
     shareMemoryByMemFdAck();
+    LOGI("send ShareMemoryReady reply >>>>>>>>>>");
 }
 
 void ShmServerSession::writData(const uint8_t* msg, uint32_t len) {
@@ -184,9 +191,39 @@ void ShmServerSession::dataSync() {
 void ShmServerSession::shareMemoryByMemFdAck() {
     if (mClientFd != -1) {
         ShmIpcMessage dataSyncMsg;
-        auto type_byte = static_cast<uint8_t>(ShmProtocolType::AckShareMemory);
+        auto type_byte = static_cast<uint8_t>(ShmProtocolType::ShareMemoryReady);
         auto length = SHM_SERVER_PROTOCOL_HEAD_SIZE;
         dataSyncMsg.header = ShmIpcMessageHeader(type_byte, length , 0);
         mShmProtocolHandler->sendShmMessage(mClientFd, dataSyncMsg);
     }
+}
+
+void ShmServerSession::exchangeMetaData(ShmMetadata shmMetadata) {
+    if (metaDataIsValid(shmMetadata)) {
+        LOGI(">>>>>>>>>> receive exchangeMetaData");
+        LOGI("meta: shmSize=%u sliceSize=%u eventQueueSize=%u",
+             shmMetadata.shmSize, shmMetadata.sliceSize, shmMetadata.eventQueueSize);
+        metaData = shmMetadata;
+    }
+
+    if(metaDataIsValid(metaData)) {
+        ShmIpcMessage msg;
+        msg.payload.resize(sizeof(ShmMetadata));
+        memcpy(msg.payload.data(), &metaData, sizeof(ShmMetadata));
+        auto type = static_cast<uint8_t>(ShmProtocolType::ExchangeMetadata);
+        auto length = SHM_SERVER_PROTOCOL_HEAD_SIZE + msg.payload.size();
+        msg.header = ShmIpcMessageHeader(type, length, msg.fds.size());
+        mShmProtocolHandler->sendShmMessage(mClientFd, msg);
+        LOGI("send exchangeMetaData reply >>>>>>>>>>");
+    }
+}
+
+void ShmServerSession::handleShareMemoryByMemfd() {
+    LOGI(">>>>>>>>>> receive ShareMemoryByMemfd");
+    ShmIpcMessage msg;
+    auto type = static_cast<uint8_t>(ShmProtocolType::AckReadyRecvFD);
+    auto length = SHM_SERVER_PROTOCOL_HEAD_SIZE;
+    msg.header = ShmIpcMessageHeader(type, length, msg.fds.size());
+    mShmProtocolHandler->sendShmMessage(mClientFd, msg);
+    LOGI("send AckReadyRecvFD reply >>>>>>>>>>");
 }

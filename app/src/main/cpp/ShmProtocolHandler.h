@@ -25,8 +25,8 @@ enum class ShmProtocolType : uint8_t {
     ShareMemoryByMemfd = 3,       // 通过 memfd 映射共享内存
     AckReadyRecvFD = 4,           // 已做好准备接收 memfd
     AckShareMemory = 5,           // 完成共享内存映射
-    SyncEvent = 6,                 // 同步事件
-    FallbackData = 7               // 共享内存不足时的回退数据
+    ShareMemoryReady = 6,           // 完成共享内存映射
+    SyncEvent = 7                 // 同步事件
 };
 
 class ShmProtocolHandler {
@@ -37,18 +37,14 @@ private:
 public:
     bool receiveProtocolHeader(int fd, uint8_t* header, std::vector<int>& received_fds);
     bool receiveProtocolPayload(int fd, char* buf, size_t len);
-
-    uint32_t parsePayloadLength(uint8_t header[SHM_SERVER_PROTOCOL_HEAD_SIZE]);
-
-    void handleShmIpcProtocol(char type, std::vector<char> payload);
-
     void exchangeMetaData(const ShmIpcMessage&  message);
+
     void shareMemoryByMemfd(const ShmIpcMessage&  message);
 
     void syncEvent(const ShmIpcMessage &message);
 
     //handle client send shm file description
-    void handleShareMemoryByMemfd();
+    void handleShareMemoryByMemfd(const ShmIpcMessage &message);
 
     explicit ShmProtocolHandler(void* extShmSessionCtx) {
         shmSessionCtx = extShmSessionCtx;

@@ -1,64 +1,13 @@
 #include "ShmProtocolHandler.h"
 #include "ShmBufferManager.h"
 #include "ShmServerSession.h"
+#include "ShmMetadata.h"
 
-uint32_t ShmProtocolHandler::parsePayloadLength(uint8_t header[SHM_SERVER_PROTOCOL_HEAD_SIZE   ]) {
-    uint32_t totalLength = 0;
-
-    totalLength |= (static_cast<uint8_t>(header[0]) << 24);
-    totalLength |= (static_cast<uint8_t>(header[1]) << 16);
-    totalLength |= (static_cast<uint8_t>(header[2]) << 8);
-    totalLength |= (static_cast<uint8_t>(header[3]));
-
-    if (totalLength < SHM_SERVER_PROTOCOL_HEAD_SIZE) {
-        return 0;
+void ShmProtocolHandler::handleShareMemoryByMemfd(const ShmIpcMessage &message) {
+    if (shmSessionCtx) {
+        auto* session = static_cast<ShmServerSession*>(shmSessionCtx);
+        session->handleShareMemoryByMemfd();
     }
-    return totalLength - SHM_SERVER_PROTOCOL_HEAD_SIZE;
-}
-
-void ShmProtocolHandler::handleShmIpcProtocol(char type, std::vector<char> vector) {
-    uint8_t typeValue = static_cast<uint8_t>(type);
-    ShmProtocolType protocolType = static_cast<ShmProtocolType>(typeValue);
-
-    switch (protocolType) {
-        case ShmProtocolType::ExchangeMetadata:
-            // 处理元信息交换
-            break;
-
-        case ShmProtocolType::ShareMemoryByFilePath:
-            // 处理文件路径共享内存
-            break;
-
-        case ShmProtocolType::ShareMemoryByMemfd:
-            //client will send shm fd.
-            handleShareMemoryByMemfd();
-            break;
-
-        case ShmProtocolType::AckReadyRecvFD:
-            // 处理接收FD确认
-            break;
-
-        case ShmProtocolType::AckShareMemory:
-            // 处理共享内存完成确认
-            break;
-
-        case ShmProtocolType::SyncEvent:
-            // 处理同步事件
-            break;
-
-        case ShmProtocolType::FallbackData:
-            // 处理回退数据
-            break;
-
-        default:
-            // 未知类型
-            break;
-    }
-
-}
-
-void ShmProtocolHandler::handleShareMemoryByMemfd() {
-
 }
 
 
@@ -148,7 +97,20 @@ bool ShmProtocolHandler::receiveProtocolPayload(int fd, char* buf, size_t len)
 }
 
 void ShmProtocolHandler::exchangeMetaData(const ShmIpcMessage &message) {
-    LOGI("handler exchangeMetaData");
+    if (message.payload.size() < sizeof(ShmMetadata)) {
+        LOGE("payload too small");
+        return;
+    }
+    ShmMetadata meta{};
+    memcpy(&meta, message.payload.data(), sizeof(ShmMetadata));
+    if (!metaDataIsValid(meta)) {
+        LOGE("invalid metadata");
+        return;
+    }
+    if (shmSessionCtx) {
+        auto* session = static_cast<ShmServerSession*>(shmSessionCtx);
+        session->exchangeMetaData(meta);
+    }
 }
 
 

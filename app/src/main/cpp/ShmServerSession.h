@@ -10,6 +10,7 @@
 #include "ShmProtocolHandler.h"
 #include "ShmMessageQueue.h"
 #include "ShmBufferManager.h"
+#include "ShmMetadata.h"
 
 
 class ShmServerSession {
@@ -35,7 +36,14 @@ public:
 
     void onSharedMemoryReady(void* addr, size_t size, int fd, ShmBufferManager* manager);
 
+    void exchangeMetaData(ShmMetadata metadata);
+
+    void handleShareMemoryByMemfd();
+
 private:
+
+    ShmMetadata metaData{};
+
     ShmMessageQueue mMessageQueue;
 
     std::atomic<bool> mShmReadThreadRunning{};
