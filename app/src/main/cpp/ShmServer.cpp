@@ -45,6 +45,6 @@ exit:
     return false;
 }
 
-void ShmServer::createShmClientSession() {
-
+std::vector<ShmServerSession*> ShmServer::getAllShmServerSessionMap() {
+    return mShmClientManager->getAllSessions();
 }

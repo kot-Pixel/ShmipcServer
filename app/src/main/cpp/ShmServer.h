@@ -16,8 +16,6 @@ class ShmServer {
     int server_fd = -1;
     struct sockaddr_un addr;
     std::unique_ptr<ShmServerSessionManager> mShmClientManager;
-
-    void createShmClientSession();
 public:
     ShmServer() : server_fd(-1), addr{},
                   mShmClientManager(std::unique_ptr<ShmServerSessionManager>(new ShmServerSessionManager())) {
@@ -29,6 +27,8 @@ public:
         }
     }
     bool initShmServer();
+
+    std::vector<ShmServerSession*> getAllShmServerSessionMap();
 };
 
 

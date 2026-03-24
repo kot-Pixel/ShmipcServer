@@ -29,6 +29,16 @@ public :
     bool createShmClientSession(int fd);
 
     void cleanAllShmClient();
+
+    std::vector<ShmServerSession*> getAllSessions() {
+        std::lock_guard<std::mutex> lock(mClientMutex);
+
+        std::vector<ShmServerSession*> result;
+        for (auto& [fd, session] : mShmClientSessionMap) {
+            result.push_back(session.get());
+        }
+        return result;
+    }
 };
 
 

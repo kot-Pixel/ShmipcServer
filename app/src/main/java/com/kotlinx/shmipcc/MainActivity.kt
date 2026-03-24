@@ -16,6 +16,10 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        binding.sampleText.setOnClickListener {
+            benchTestSendData();
+        }
+
         thread {
             stringFromJNI()
         }
@@ -27,6 +31,8 @@ class MainActivity : AppCompatActivity() {
      * which is packaged with this application.
      */
     external fun stringFromJNI(): String
+
+    external fun benchTestSendData()
 
     companion object {
         // Used to load the 'shmipcc' library on application startup.
