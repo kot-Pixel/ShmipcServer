@@ -33,6 +33,7 @@ ShmBufferManager* init_shm_buffer_manager(void* addr, size_t total_size) {
 
     mgr->io_queue.head.store(0);
     mgr->io_queue.tail.store(0);
+    mgr->io_queue.workingFlags.store(0);
     mgr->io_queue.capacity = EVENT_QUEUE_SIZE;
 
     size_t header_size = sizeof(ShmBufferManager);

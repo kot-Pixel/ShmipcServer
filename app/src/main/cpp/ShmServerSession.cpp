@@ -111,10 +111,11 @@ void ShmServerSession::onSharedMemoryReady(void *addr, size_t size, int fd, ShmB
     LOGI("send ShareMemoryReady reply >>>>>>>>>>");
 }
 
-void ShmServerSession::writData(const uint8_t* msg, uint32_t len) {
+void ShmServerSession::writData(const uint8_t* msg, uint32_t len)
+{
     if (!mBufferManager || !msg || len == 0) return;
 
-    auto* mgr = mBufferManager;
+    auto* mgr  = mBufferManager;
     auto* list = &mgr->buffer_list;
     auto* queue = &mgr->io_queue;
 
@@ -139,11 +140,9 @@ void ShmServerSession::writData(const uint8_t* msg, uint32_t len) {
         }
 
         auto& s = list->slices[idx];
-
         uint32_t copy_len = std::min(len - offset, slice_size);
         memcpy(s.data, msg + offset, copy_len);
         s.length = copy_len;
-
         offset += copy_len;
 
         if (prev != INVALID_INDEX)
@@ -155,12 +154,16 @@ void ShmServerSession::writData(const uint8_t* msg, uint32_t len) {
         s.next = INVALID_INDEX;
     }
 
+    if (first == INVALID_INDEX) return;
+
+    uint32_t capacity = queue->capacity;
     uint32_t tail = queue->tail.load(std::memory_order_acquire);
-    uint32_t next_tail = (tail + 1) % queue->capacity;
+    uint32_t head = queue->head.load(std::memory_order_acquire);
+    uint32_t next_tail = (tail + 1) % capacity;
 
-    if (next_tail == queue->head.load(std::memory_order_acquire)) {
-        LOGE("Queue full!");
-
+    if (next_tail == head) {
+        LOGE("Queue full! (head=%u, tail=%u)", head, tail);
+        // 回滚 slice
         uint32_t cur = first;
         while (cur != INVALID_INDEX) {
             uint32_t next = list->slices[cur].next;
@@ -175,7 +178,11 @@ void ShmServerSession::writData(const uint8_t* msg, uint32_t len) {
 
     queue->tail.store(next_tail, std::memory_order_release);
 
-    dataSync();
+    uint32_t prev_flags = queue->workingFlags.fetch_or(WORKING_FLAG, std::memory_order_acq_rel);
+    if ((prev_flags & WORKING_FLAG) == 0) {
+        dataSync();
+        LOGI("Sent SyncEvent after successful enqueue (tail=%u)", next_tail);
+    }
 }
 
 void ShmServerSession::dataSync() {

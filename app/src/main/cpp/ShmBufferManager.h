@@ -21,6 +21,8 @@
 #define SLICE_SIZE 16384 // 16KB
 #define INVALID_INDEX 0xFFFFFFFF
 
+constexpr uint32_t WORKING_FLAG = 1u;
+
 /**
  * @param slice_index: start read buffer slice index.
  * @param length: length of buffer transport.
@@ -41,8 +43,9 @@ struct ShmBufferEvent {
  */
 struct ShmBufferEventQueue {
     std::atomic<uint32_t> head; // 4 个字节
-    std::atomic<uint32_t> tail;// 4 个字节
+    std::atomic<uint32_t> tail; // 4 个字节
     uint32_t capacity; // 4 个字节
+    std::atomic<uint32_t> workingFlags; // 4 个字节
     ShmBufferEvent events[EVENT_QUEUE_SIZE];
 };
 

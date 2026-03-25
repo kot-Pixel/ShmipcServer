@@ -29,6 +29,7 @@ Java_com_kotlinx_shmipcc_MainActivity_benchTestSendData(JNIEnv *env, jobject thi
     ShmServerSession* firstServerSession = allServerSession[0];
 
     for (int i = 0; i < 500; ++i) {
+        LOGI("writeData to Client count is: %d", i);
         ShmBenchTester::benchTest(firstServerSession, 1024);
     }
 }
